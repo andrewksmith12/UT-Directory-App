@@ -69,11 +69,13 @@ def main():
         entry = searchByEID(eid)
         if entry != -1:
             print(entry.entry_to_json)
+
     elif (int(choiceSelection) == 2):
         name = '(cn=' + input("enter a full name to lookup: ")+')'
         entry = searchByFullName(name)
         if entry != -1:
             print(entry.entry_to_json)
+
     elif (int(choiceSelection) == 3):
         fileIn = input("Input file name (including extension): ")
         while fileIn == "":
@@ -86,6 +88,7 @@ def main():
         #outputField = "mail"
         process_list(fileIn, fileOut, searchByFullName,'(cn=')
         print(bcolors.OKGREEN+"File Processed. Output saved to "+fileOut+bcolors.ENDC)
+
     elif (int(choiceSelection) == 4):
         fileIn = input("Input file name (including extension): ")
         while fileIn == "":
@@ -98,11 +101,14 @@ def main():
         #outputField = "mail"
         process_list(fileIn, fileOut, searchByEID,'(utexasEduPersonEid=')
         print(bcolors.OKGREEN+"File Processed. Output saved to "+fileOut+bcolors.ENDC)
+
     elif (int(choiceSelection) == 5):
         exit()
+
     else:
         print(bcolors.WARNING+"Selection not valid, please enter a valid selection.\n"+bcolors.ENDC)
         choiceSelection = input(choicePrompt)
+
     print("\n\n")
     main()
 
