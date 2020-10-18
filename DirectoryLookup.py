@@ -3,13 +3,18 @@ import json
 from bcolors import bcolors
 from ldap3 import Connection, Server, ANONYMOUS, SIMPLE, SYNC, ASYNC
 
-def searchByEID(eid):
+def establish_session():
     server = Server('directory.utexas.edu')
     conn = Connection(server)
     conn.bind()
-    conn.search('dc=directory,dc=utexas,dc=edu', eid, attributes=['displayName','mail', 'utexasEduPersonMajor', 'utexasEduPersonClassification','utexasEduPersonPubAffiliation','utexasEduPersonSchool'])
+    return conn
+
+def perform_search(search_string, identifier_string):
+    conn = establish_session()
+    conn.search('dc=directory,dc=utexas,dc=edu', search_string, attributes=['displayName','utexasEduPersonEid','mail', 'utexasEduPersonMajor', 'utexasEduPersonClassification','utexasEduPersonPubAffiliation','utexasEduPersonSchool'])
     if len(conn.entries) == 0:
-        print(bcolors.WARNING+"No matching EID found, skipping."+bcolors.ENDC)
+        print(bcolors.WARNING+"No matching "+identifier_string+" found, skipping."+bcolors.ENDC)
+        conn.unbind()
         return -1
     elif len(conn.entries) > 1:
         i = 0
@@ -19,39 +24,25 @@ def searchByEID(eid):
             i += 1
         entryNumber = int(input("Enter the number for the entry that matches the one you're looking for: "))
         entry = conn.entries[entryNumber]
+        conn.unbind()
         return entry
     else:
         entry = conn.entries[0]
+        conn.unbind()
         return entry
 
-def searchByFullName(name):
-    server = Server('directory.utexas.edu')
-    conn = Connection(server)
-    conn.bind()
-    conn.search('dc=directory,dc=utexas,dc=edu', name, attributes=['displayName','utexasEduPersonEid','mail', 'utexasEduPersonMajor', 'utexasEduPersonClassification','utexasEduPersonPubAffiliation','utexasEduPersonSchool'])
-    if len(conn.entries) == 0:
-        print(bcolors.WARNING+"No matching name found, skipping."+bcolors.ENDC)
-        return -1
-    elif len(conn.entries) > 1:
-        i = 0
-        for entry in conn.entries:
-            print("Entry Number "+str(i)+":  ")
-            print(entry)
-            i += 1
-        entryNumber = int(input("Enter the number for the entry that matches the one you're looking for: "))
-        entry = conn.entries[entryNumber]
-        return entry
-    else:
-        entry = conn.entries[0]
-        return entry
+def searchByEID(userVal):
+    eid = '(utexasEduPersonEid=' + userVal +')'
+    return perform_search(eid,"EID")
 
-def process_list(input_file, output_file,searchMethod,searchKey):
-    input_file = open(input_file, "r")
-    output = open(output_file, "w")
+def searchByFullName(userVal):
+    name = '(cn=' + userVal +')'
+    return perform_search(name,"name")
+
+def process_list(input_file,output,searchMethod):
     searchID = input_file.readline().strip("\n")
-    #print(searchID)
     while searchID != "":
-        entry = searchMethod(searchKey+ searchID+')')
+        entry = searchMethod(searchID)
         if entry != -1:
             output.write(searchID+","+str(entry.mail)+"\n")
         else:
@@ -60,47 +51,43 @@ def process_list(input_file, output_file,searchMethod,searchKey):
 
 
 
-def main():
+def cli_options():
     choicePrompt = "UT Directory Services Data Lookup Tool\n\nOption 1: Search for student information by EID.\nOption 2: Search for student information by name.\nOption 3: Process file of names, return names and emails.\nOption 4: Process file of EIDs, return EIDs and emails\nOption 5: Exit Tool.\n\nSelect an option: "
     choiceSelection = input(choicePrompt)
 
+    def command_line_list_processing(searchFunction):
+        fileIn = input("Input file name (including extension): ")
+        while fileIn == "":
+            print(bcolors.FAIL+"Input file cannot be blank."+bcolors.ENDC)
+            fileIn = input("Input file name (including extension): ")
+        fileOut = input("Output file name (including extension, will be formatted as csv): ")
+        if fileOut == "":
+            print(bcolors.WARNING+"No output file provided, using output.csv"+bcolors.ENDC)
+            fileOut = "output.csv"
+        input_file = open(fileIn, "r")
+        output = open(fileOut, "w")
+        process_list(input_file, output, searchFunction)
+        input_file.close()
+        output.close()
+        print(bcolors.OKGREEN+"File Processed. Output saved to "+fileOut+bcolors.ENDC)
+
     if (int(choiceSelection) == 1):
-        eid = '(utexasEduPersonEid=' + input("enter an EID to lookup: ")+')'
+        eid = input("enter an EID to lookup: ")
         entry = searchByEID(eid)
         if entry != -1:
             print(entry.entry_to_json)
 
     elif (int(choiceSelection) == 2):
-        name = '(cn=' + input("enter a full name to lookup: ")+')'
+        name = input("enter a name to lookup: ")
         entry = searchByFullName(name)
         if entry != -1:
             print(entry.entry_to_json)
 
     elif (int(choiceSelection) == 3):
-        fileIn = input("Input file name (including extension): ")
-        while fileIn == "":
-            print(bcolors.FAIL+"Input file cannot be blank."+bcolors.ENDC)
-            fileIn = input("Input file name (including extension): ")
-        fileOut = input("Output file name (including extension, will be formatted as csv): ")
-        if fileOut == "":
-            print(bcolors.WARNING+"No output file provided, using output.csv"+bcolors.ENDC)
-            fileOut = "output.csv"
-        #outputField = "mail"
-        process_list(fileIn, fileOut, searchByFullName,'(cn=')
-        print(bcolors.OKGREEN+"File Processed. Output saved to "+fileOut+bcolors.ENDC)
+        command_line_list_processing(searchByFullName)
 
     elif (int(choiceSelection) == 4):
-        fileIn = input("Input file name (including extension): ")
-        while fileIn == "":
-            print(bcolors.FAIL+"Input file cannot be blank."+bcolors.ENDC)
-            fileIn = input("Input file name (including extension): ")
-        fileOut = input("Output file name (including extension, will be formatted as csv): ")
-        if fileOut == "":
-            print(bcolors.WARNING+"No output file provided, using output.csv"+bcolors.ENDC)
-            fileOut = "output.csv"
-        #outputField = "mail"
-        process_list(fileIn, fileOut, searchByEID,'(utexasEduPersonEid=')
-        print(bcolors.OKGREEN+"File Processed. Output saved to "+fileOut+bcolors.ENDC)
+        command_line_list_processing(searchByEID)
 
     elif (int(choiceSelection) == 5):
         exit()
@@ -110,7 +97,7 @@ def main():
         choiceSelection = input(choicePrompt)
 
     print("\n\n")
-    main()
+    cli_options()
 
-
-main()
+if __name__ == "__main__":  # pragma: no cover
+    cli_options()
