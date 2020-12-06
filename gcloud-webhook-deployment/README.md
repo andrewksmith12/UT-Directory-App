@@ -1,2 +1,2 @@
 ## GCloud Webhook Deployment
-This folder contains a web deployment of the Python tool that I designed to respond to directory queries from a DialogFlow chat bot, which I then linked to Google Assistant. I ran this code in a Cloud Function on GCP, and had DialogFlow call it via a Web-hook. 
+This folder contains a web deployment of the Python tool that I designed to respond to directory queries from a DialogFlow chat bot, which I then linked to Google Assistant. I ran this code in a Cloud Function on GCP, and had DialogFlow call it via a Webhook. 
